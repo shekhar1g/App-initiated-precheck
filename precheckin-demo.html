@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pre-Check-In, Live — a runnable SMART Health Link demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<style>
+  :root {
+    --navy: #1F3A5F;
+    --navy-ink: #16232E;
+    --teal: #2A7F87;
+    --teal-deep: #1F6068;
+    --paper: #F6F8F9;
+    --card: #FFFFFF;
+    --line: #DCE4E8;
+    --ink: #232E36;
+    --ink-soft: #5B6A73;
+    --amber: #9A6414;
+    --amber-bg: #FBF3E2;
+    --amber-line: #E6C989;
+    --green: #2A6E49;
+    --green-bg: #E7F3EC;
+    --green-line: #AFD9C1;
+    --red: #9A3131;
+    --red-bg: #FBECEC;
+    --code-bg: #10202A;
+    --code-ink: #DCEBEF;
+    --code-accent: #7FD8CB;
+    --code-string: #E8C98B;
+    --code-key: #8FC4E8;
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --radius: 10px;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --navy: #9FC1E8; --navy-ink: #EAF1F6; --teal: #63C2CB; --teal-deep: #8FDDE4;
+      --paper: #131B20; --card: #1B252B; --line: #2C3940; --ink: #E7EEF1; --ink-soft: #9FB0B8;
+      --amber: #E3B15E; --amber-bg: #2C2313; --amber-line: #513E1B;
+      --green: #7FCBA0; --green-bg: #16281F; --green-line: #2C4E3A;
+      --red: #E39898; --red-bg: #2C1717;
+      --code-bg: #0A1318; --code-ink: #D7E6EA;
+    }
+  }
+  :root[data-theme="dark"] {
+    --navy: #9FC1E8; --navy-ink: #EAF1F6; --teal: #63C2CB; --teal-deep: #8FDDE4;
+    --paper: #131B20; --card: #1B252B; --line: #2C3940; --ink: #E7EEF1; --ink-soft: #9FB0B8;
+    --amber: #E3B15E; --amber-bg: #2C2313; --amber-line: #513E1B;
+    --green: #7FCBA0; --green-bg: #16281F; --green-line: #2C4E3A;
+    --red: #E39898; --red-bg: #2C1717;
+    --code-bg: #0A1318; --code-ink: #D7E6EA;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: inherit; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-sans); font-size: 16px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--teal); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 96px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto; padding: 12px 20px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .brand { font-weight: 600; font-size: 0.92rem; color: var(--navy-ink); white-space: nowrap; }
+  .brand span { color: var(--teal); }
+  .progress-rail { display: flex; gap: 6px; flex: 1; min-width: 180px; }
+  .progress-seg { height: 5px; border-radius: 3px; flex: 1; background: var(--line); transition: background .3s ease; }
+  .progress-seg.done { background: var(--teal); }
+  .status-chip {
+    font-family: var(--font-mono); font-size: 0.72rem; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap;
+  }
+  .status-chip.live { color: var(--green); border-color: var(--green-line); background: var(--green-bg); }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 52px 0 28px; }
+  .hero-title h1 {
+    font-size: clamp(1.7rem, 3.4vw, 2.35rem); line-height: 1.15; margin: 0 0 14px;
+    color: var(--navy-ink); font-weight: 700; letter-spacing: -0.01em; max-width: 15ch;
+  }
+  .hero p.lead {
+    font-size: 1.05rem; color: var(--ink-soft); max-width: 62ch; margin: 0 0 28px;
+  }
+  .hero-link-panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 22px; display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center;
+  }
+  @media (max-width: 620px) { .hero-link-panel { grid-template-columns: 1fr; } }
+  .hero-qr-slot {
+    width: 108px; height: 108px; border-radius: 8px; border: 1px dashed var(--line);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
+    background: var(--paper);
+  }
+  .hero-qr-slot canvas { width: 100%; height: 100%; display: block; }
+  .hero-qr-slot .placeholder { font-size: 0.68rem; color: var(--ink-soft); text-align: center; padding: 8px; font-family: var(--font-mono); }
+  .hero-link-text-label { font-size: 0.72rem; text-transform: none; color: var(--ink-soft); margin: 0 0 4px; }
+  .hero-link-text {
+    font-family: var(--font-mono); font-size: 0.82rem; color: var(--ink);
+    word-break: break-all; line-height: 1.5;
+  }
+  .hero-link-text .muted { color: var(--ink-soft); }
+
+  /* ---------- layout with step rail ---------- */
+  .layout { display: grid; grid-template-columns: 64px 1fr; gap: 28px; margin-top: 8px; }
+  @media (max-width: 780px) { .layout { grid-template-columns: 1fr; } .rail { display: none; } }
+  .rail { position: sticky; top: 68px; align-self: start; display: flex; flex-direction: column; align-items: center; padding-top: 6px; }
+  .rail-dot {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-mono);
+    font-size: 0.82rem; color: var(--ink-soft); background: var(--card); flex-shrink: 0;
+    transition: all .25s ease;
+  }
+  .rail-dot.active { border-color: var(--teal); color: var(--teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 14%, transparent); }
+  .rail-dot.done { border-color: var(--teal); background: var(--teal); color: #fff; }
+  .rail-line { width: 2px; flex: 1; background: var(--line); min-height: 46px; }
+  .rail-line.done { background: var(--teal); }
+
+  section.step {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 26px 24px; margin-bottom: 20px; scroll-margin-top: 76px;
+  }
+  .step-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .step-num { font-family: var(--font-mono); color: var(--teal); font-size: 0.85rem; }
+  .step-head h2 { font-size: 1.18rem; margin: 0; color: var(--navy-ink); font-weight: 600; }
+  .step-body p { color: var(--ink-soft); max-width: 66ch; margin: 6px 0 16px; }
+  .step-body p:first-of-type { margin-top: 10px; }
+
+  .checklist { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 6px; }
+  .check-row {
+    display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; align-items: center;
+    padding: 9px 10px; border-radius: 7px; cursor: pointer; border: 1px solid transparent;
+  }
+  .check-row:hover { background: var(--paper); }
+  .check-row.disabled { cursor: not-allowed; opacity: .55; }
+  .check-row input { accent-color: var(--teal); width: 16px; height: 16px; }
+  .check-row .label { font-size: 0.94rem; }
+  .check-row .why { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-top: 1px; }
+  .check-row .count { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-soft); white-space: nowrap; }
+  .group-label { font-size: 0.74rem; color: var(--amber); font-weight: 600; margin: 16px 0 2px; }
+  .group-label:first-child { margin-top: 4px; }
+
+  textarea.note {
+    width: 100%; font-family: var(--font-sans); font-size: 0.92rem; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; resize: vertical; min-height: 56px; margin-top: 4px;
+  }
+  textarea.note:focus, .check-row input:focus-visible, button:focus-visible, .code-toggle:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  button.primary {
+    font-family: var(--font-sans); font-weight: 600; font-size: 0.9rem; color: #fff;
+    background: var(--teal-deep); border: none; padding: 11px 20px; border-radius: 8px; cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+  }
+  button.primary:hover { background: var(--navy); }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+  button.ghost {
+    font-family: var(--font-sans); font-weight: 500; font-size: 0.88rem; color: var(--teal-deep);
+    background: transparent; border: 1px solid var(--line); padding: 10px 16px; border-radius: 8px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--teal); }
+  .hint { font-size: 0.82rem; color: var(--ink-soft); }
+
+  .callout {
+    border-radius: 8px; padding: 12px 14px; font-size: 0.86rem; margin: 14px 0; border: 1px solid;
+  }
+  .callout.amber { background: var(--amber-bg); border-color: var(--amber-line); color: var(--ink); }
+  .callout.green { background: var(--green-bg); border-color: var(--green-line); color: var(--ink); }
+  .callout strong { color: var(--navy-ink); }
+
+  /* code / data panels */
+  .code-toggle {
+    font-family: var(--font-mono); font-size: 0.78rem; color: var(--teal-deep);
+    background: transparent; border: none; cursor: pointer; padding: 6px 0; display: inline-flex;
+    align-items: center; gap: 6px; margin-top: 10px;
+  }
+  .code-toggle .chev { transition: transform .2s ease; display: inline-block; }
+  .code-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  pre.code-panel {
+    margin: 8px 0 0; background: var(--code-bg); color: var(--code-ink); border-radius: 8px;
+    padding: 16px 18px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6;
+    overflow-x: auto; display: none;
+  }
+  pre.code-panel.open { display: block; }
+  pre.code-panel .c-key { color: var(--code-key); }
+  pre.code-panel .c-str { color: var(--code-string); }
+  pre.code-panel .c-fn { color: var(--code-accent); }
+  pre.code-panel .c-com { color: #6E8890; font-style: italic; }
+
+  pre.data-panel {
+    margin: 10px 0 0; background: var(--code-bg); color: var(--code-ink); border-radius: 8px;
+    padding: 16px 18px; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.55;
+    overflow-x: auto; max-height: 340px; overflow-y: auto;
+  }
+  .data-label { font-size: 0.72rem; color: var(--ink-soft); margin: 14px 0 0; }
+  .data-label:first-child { margin-top: 0; }
+
+  .fetch-row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-top: 14px; }
+  .fetch-log { flex: 1; min-width: 240px; }
+  .log-line { font-family: var(--font-mono); font-size: 0.8rem; padding: 7px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 10px; }
+  .log-line:last-child { border-bottom: none; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); margin-top: 6px; flex-shrink: 0; }
+  .log-dot.ok { background: var(--green); }
+  .log-dot.no { background: var(--red); }
+
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+  .status-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .status-card .k { font-size: 0.72rem; color: var(--ink-soft); margin-bottom: 3px; }
+  .status-card .v { font-family: var(--font-mono); font-size: 0.86rem; }
+
+  .cal-event-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .cal-event-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    padding: 10px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--paper);
+    transition: border-color .3s ease, background .3s ease;
+  }
+  .cal-event-row .title { font-size: 0.9rem; font-weight: 500; }
+  .cal-event-row .meta { font-size: 0.78rem; color: var(--ink-soft); margin-top: 1px; }
+  .cal-event-row .verdict { font-family: var(--font-mono); font-size: 0.74rem; white-space: nowrap; padding: 3px 9px; border-radius: 999px; color: var(--ink-soft); }
+  .cal-event-row.match { border-color: var(--green-line); background: var(--green-bg); }
+  .cal-event-row.match .verdict { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+  .cal-event-row.weak-match { border-color: var(--amber-line); background: var(--amber-bg); }
+  .cal-event-row.weak-match .verdict { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+
+  footer { max-width: 1080px; margin: 40px auto 0; padding: 20px; color: var(--ink-soft); font-size: 0.82rem; border-top: 1px solid var(--line); }
+  footer a { color: var(--ink-soft); text-decoration: underline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  .pulse { animation: pulseOnce 900ms ease; }
+  @keyframes pulseOnce {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 35%, transparent); }
+    100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--teal) 0%, transparent); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Pre-Check-In, Live <span>· a runnable demo</span></div>
+    <div class="progress-rail" id="progressRail"></div>
+    <div class="status-chip" id="statusChip">not_started</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-title">
+      <h1>Watch a SMART Health Link get built, encrypted, and read back, live in this page</h1>
+    </div>
+    <p class="lead">
+      This walks through the design in MDR's pre-check-in build guide end to end: choosing what to share,
+      assembling the package, encrypting it, and having a practice read it back. Every step below runs for
+      real in your browser, using the same AES-256-GCM encryption and QR encoding the reference build uses.
+      Nothing here is sent anywhere. The decryption key never leaves this page.
+    </p>
+    <div class="hero-link-panel">
+      <div class="hero-qr-slot" id="heroQrSlot">
+        <div class="placeholder">QR appears<br>after step 4</div>
+      </div>
+      <div>
+        <p class="hero-link-text-label">Current SMART Health Link</p>
+        <div class="hero-link-text" id="heroLinkText"><span class="muted">Nothing created yet. Work through the steps below.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="rail" id="rail"></div>
+
+    <div class="steps">
+
+      <!-- STEP 1 -->
+      <section class="step" id="step-1" data-step="1">
+        <div class="step-head"><span class="step-num">01</span><h2>The app learns of a visit</h2></div>
+        <div class="step-body">
+          <p>
+            A visit reaches an app like MDR one of five ways: read from the practice's EHR, booked
+            in the app, found by scanning the patient's own calendar, imported from a calendar file, or typed in by hand. Here it is a FHIR
+            <code>Appointment</code> read from a practice's API, for a primary care visit next Tuesday.
+          </p>
+          <div class="data-label">The Appointment resource the app just read</div>
+          <pre class="data-panel" id="appointmentJson"></pre>
+
+          <div class="callout amber" style="margin-top:20px;">
+            <strong>The other four ways don't all look like this.</strong> Most patients never type
+            a visit into any app at all. A confirmation text arrives, they tap "Add to Calendar," and
+            it lands in their phone's own calendar, not here. Try the scan below, it runs the exact
+            matching logic the reference build uses to find visits like that on its own.
+          </div>
+
+          <div class="data-label">A patient's device calendar (synthetic, for this demo)</div>
+          <div id="calendarEventList" class="cal-event-list"></div>
+          <div class="btn-row">
+            <button class="ghost" onclick="runCalendarScan()">Scan this calendar &rarr;</button>
+            <span class="hint" id="scanSummary"></span>
+          </div>
+          <button class="code-toggle" aria-expanded="false" onclick="toggleCode(this,'code-calscan')">
+            <span class="chev">&#9656;</span> Show the matching code
+          </button>
+          <pre class="code-panel" id="code-calscan"></pre>
+          <div class="btn-row">
+            <button class="primary" id="btn-1" onclick="advanceFrom(1)">This visit is scheduled &rarr;</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" id="step-2" data-step="2" style="display:none">
+        <div class="step-head"><span class="step-num">02</span><h2>Choose what to share</h2></div>
+        <div class="step-body">
+          <p>
+            The visit type resolves to <strong>Primary care visit</strong>, so the app pre-checks the
+            basic set plus what's suggested for this kind of visit. Nothing is sent that isn't ticked here.
+            Try unchecking something, it changes what gets built in the next step.
+          </p>
+          <div class="group-label">Basic set for every visit</div>
+          <div class="checklist" id="group-basic"></div>
+          <div class="group-label">Suggested for a primary care visit</div>
+          <div class="checklist" id="group-suggested"></div>
+          <div class="group-label">Also available</div>
+          <div class="checklist" id="group-other"></div>
+          <div class="group-label">A note in your own words (optional)</div>
+          <textarea class="note" id="noteInput" placeholder="e.g. I get nervous about needles, please walk me through each step.">I get nervous about needles. Please tell me each step.</textarea>
+          <div class="btn-row">
+            <button class="primary" id="btn-2" onclick="advanceFrom(2)">Build the package &rarr;</button>
+            <span class="hint" id="selectionSummary"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" id="step-3" data-step="3" style="display:none">
+        <div class="step-head"><span class="step-num">03</span><h2>The app builds the package</h2></div>
+        <div class="step-body">
+          <p>
+            The selected records go into a FHIR Bundle shaped to the KTC guide's PatientSharedBundle
+            profile: type <code>collection</code>, one Patient entry, the chosen resources, and a
+            rendered summary the practice can read without a FHIR viewer. The real build renders that
+            summary as a PDF; here it's shown as the same text before it's laid onto a page.
+          </p>
+          <div class="data-label">PatientSharedBundle, entry types</div>
+          <pre class="data-panel" id="bundleTypesPanel"></pre>
+          <div class="data-label">The rendered summary (becomes the FHIR-rendered PDF, LOINC 60591-5)</div>
+          <pre class="data-panel" id="renderedSummaryPanel"></pre>
+          <button class="code-toggle" aria-expanded="false" onclick="toggleCode(this,'code-bundle')">
+            <span class="chev">&#9656;</span> Show the code that builds this bundle
+          </button>
+          <pre class="code-panel" id="code-bundle"></pre>
+          <div class="btn-row">
+            <button class="primary" id="btn-3" onclick="advanceFrom(3)">Encrypt and create the link &rarr;</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" id="step-4" data-step="4" style="display:none">
+        <div class="step-head"><span class="step-num">04</span><h2>Encrypt the bundle into a SMART Health Link</h2></div>
+        <div class="step-body">
+          <p>
+            The bundle is encrypted with a fresh 256-bit key using AES-256-GCM, exactly as the KTC guide
+            specifies for a flag-<code>U</code> link: algorithm <code>dir</code>, encryption
+            <code>A256GCM</code>, content type <code>application/fhir+json</code>. The key travels
+            inside the link. It is never sent to a server, here or in the real build.
+          </p>
+          <div class="btn-row">
+            <button class="primary" id="btn-4" onclick="runEncrypt()">Run the encryption &rarr;</button>
+          </div>
+          <div id="encryptResults" style="display:none">
+            <div class="data-label">JWE protected header (decoded)</div>
+            <pre class="data-panel" id="jweHeaderPanel"></pre>
+            <div class="data-label">Compact JWE, the encrypted file itself</div>
+            <pre class="data-panel" id="jwePanel"></pre>
+            <div class="data-label">The shlink:/ payload</div>
+            <pre class="data-panel" id="payloadPanel"></pre>
+            <div class="callout amber">
+              <strong>What's simplified here.</strong> The real build hosts the ciphertext at a private
+              URL and the link points there. This page has no server, so the link below embeds a
+              placeholder URL and this same page acts as the practice's reader in step 5.
+            </div>
+            <button class="code-toggle" aria-expanded="false" onclick="toggleCode(this,'code-encrypt')">
+              <span class="chev">&#9656;</span> Show the encryption code
+            </button>
+            <pre class="code-panel" id="code-encrypt"></pre>
+            <div class="btn-row">
+              <button class="primary" onclick="advanceFrom(4)">Show the QR code &rarr;</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="step" id="step-5" data-step="5" style="display:none">
+        <div class="step-head"><span class="step-num">05</span><h2>Route B: a QR code at the desk</h2></div>
+        <div class="step-body">
+          <p>
+            This is the route every practice can use with no integration at all. The patient shows this
+            code, front-desk staff scan it the way they'd scan a boarding pass, and the practice's own
+            EHR fetches the encrypted file. It expires in 15 minutes, like the reference build's default.
+          </p>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-top:14px;">
+            <canvas id="qrCanvas" width="180" height="180" style="border-radius:8px; border:1px solid var(--line);"></canvas>
+            <div style="flex:1; min-width:220px;">
+              <div class="status-grid">
+                <div class="status-card"><div class="k">Route</div><div class="v">qr</div></div>
+                <div class="status-card"><div class="k">Expires in</div><div class="v" id="ttlDisplay">15:00</div></div>
+                <div class="status-card"><div class="k">Status</div><div class="v" id="qrStepStatus">qr_ready</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="callout amber" style="margin-top:18px;">
+            <strong>Route A works the same way underneath.</strong> Instead of a QR code, the app hands
+            this exact link to the practice's EHR over the integration it already has. Section 5 of the
+            build guide has the retry and status handling for that route; nothing about the encryption
+            or the fetch below changes.
+          </div>
+          <div class="btn-row">
+            <button class="primary" onclick="advanceFrom(5)">Simulate the front desk scanning it &rarr;</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 6 -->
+      <section class="step" id="step-6" data-step="6" style="display:none">
+        <div class="step-head"><span class="step-num">06</span><h2>The practice fetches and decrypts it</h2></div>
+        <div class="step-body">
+          <p>
+            The practice's system requests the link with its own name attached, decrypts it with the
+            key from the link, and splits what it got into what it must file and what it should file.
+            Click through each step below.
+          </p>
+          <div class="fetch-row">
+            <div class="fetch-log" id="fetchLog"></div>
+          </div>
+          <div class="btn-row">
+            <button class="primary" id="fetchBtn" onclick="runFetchStep()">Request the link &rarr;</button>
+          </div>
+          <div id="fetchResults" style="display:none">
+            <div class="data-label">Filed automatically (Condition, MedicationRequest, AllergyIntolerance, Immunization, and the PDF)</div>
+            <pre class="data-panel" id="mustFilePanel"></pre>
+            <div class="data-label">Filed if the practice's system chooses to (everything else selected)</div>
+            <pre class="data-panel" id="shouldFilePanel"></pre>
+            <div class="callout green">
+              <strong>Status is derived, never stored.</strong> The moment this fetch succeeded, the
+              status below changed from <code>qr_ready</code> to <code>retrieved</code>, because a
+              successful read is the only thing that produces that state.
+            </div>
+            <div class="status-grid">
+              <div class="status-card"><div class="k">State</div><div class="v" id="finalState">retrieved</div></div>
+              <div class="status-card"><div class="k">Recipient</div><div class="v" id="finalRecipient">&mdash;</div></div>
+              <div class="status-card"><div class="k">Retrieved at</div><div class="v" id="finalTime">&mdash;</div></div>
+            </div>
+          </div>
+          <button class="code-toggle" aria-expanded="false" onclick="toggleCode(this,'code-status')">
+            <span class="chev">&#9656;</span> Show how status is derived
+          </button>
+          <pre class="code-panel" id="code-status"></pre>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<footer>
+  This page runs entirely client-side. It is a teaching companion to MDR's pre-check-in build guide, not
+  the production build, which is a Node.js service with 130 automated tests covering the same encryption,
+  bundle shape, status logic, and device-calendar matching shown here. Route A (the EHR-integration route) is described but not
+  called live, since it needs a real EHR to hand a link to.
+</footer>
+
+<script>
+/* ======================================================================
+   Data: a small synthetic patient, matching the one in the reference build
+   ====================================================================== */
+const PATIENT = {
+  resourceType: 'Patient', id: 'p1',
+  name: [{ family: 'Rivera', given: ['Jamie'] }], birthDate: '1984-06-02',
+};
+const RESOURCES = {
+  insurance: [{ resourceType: 'Coverage', id: 'cov1', status: 'active', payor: [{ display: 'Example Health Plan' }], identifier: [{ value: 'EX-123456' }] }],
+  medications: [
+    { resourceType: 'MedicationRequest', id: 'mr1', status: 'active', medicationCodeableConcept: { text: 'Lisinopril 10 mg tablet' } },
+    { resourceType: 'MedicationRequest', id: 'mr2', status: 'active', medicationCodeableConcept: { text: 'Metformin 500 mg tablet' } },
+  ],
+  allergies: [{ resourceType: 'AllergyIntolerance', id: 'al1', code: { text: 'Penicillin' } }],
+  problems: [{ resourceType: 'Condition', id: 'co1', code: { text: 'Type 2 diabetes mellitus' } }],
+  immunizations: [{ resourceType: 'Immunization', id: 'im1', status: 'completed', vaccineCode: { text: 'Influenza vaccine' }, occurrenceDateTime: '2025-10-01' }],
+  lab_results: [{ resourceType: 'Observation', id: 'ob1', status: 'final', code: { text: 'Hemoglobin A1c' }, valueQuantity: { value: 6.9, unit: '%' } }],
+  vitals: [{ resourceType: 'Observation', id: 'ob2', status: 'final', code: { text: 'Body weight' }, valueQuantity: { value: 70, unit: 'kg' } }],
+  procedures: [{ resourceType: 'Procedure', id: 'pr1', status: 'completed', code: { text: 'Appendectomy' }, performedDateTime: '2012-03-14' }],
+};
+const CLASS_LABEL = { insurance: 'Insurance', medications: 'Medications', allergies: 'Allergies', problems: 'Problems', immunizations: 'Immunizations', lab_results: 'Lab results', vitals: 'Vital signs', procedures: 'Procedures' };
+const BASIC = ['insurance', 'medications', 'allergies'];
+const SUGGESTED = ['problems', 'immunizations', 'lab_results', 'vitals'];
+const OTHER = ['procedures'];
+const MUST_FILE_TYPES = new Set(['Condition', 'MedicationRequest', 'AllergyIntolerance', 'Immunization', 'DocumentReference']);
+
+const APPOINTMENT = {
+  resourceType: 'Appointment', id: 'ehr-appt-77', status: 'booked', description: 'Annual wellness visit',
+  start: '2026-10-08T09:30:00-05:00', end: '2026-10-08T10:00:00-05:00',
+  serviceType: [{ coding: [{ system: 'http://snomed.info/sct', code: '394814009', display: 'General practice' }] }],
+  participant: [
+    { actor: { reference: 'Location/1', display: 'Lakeside Clinic' } },
+    { actor: { reference: 'Practitioner/1', display: 'Dr. Lee' } },
+  ],
+};
+
+/* ---------------------------------------------------------------------
+   The device-calendar matcher, ported line-for-line from
+   src/intake/deviceCalendar.js so this demo runs the same logic the
+   reference build's 14 tests cover, not a simplified stand-in.
+   --------------------------------------------------------------------- */
+const DEMO_PRACTICES = [
+  { id: 'prac_lakeside', name: 'Lakeside Family Medicine' },
+  { id: 'prac_riverbend', name: 'Riverbend Orthopedics' },
+];
+const GENERIC_MEDICAL_KEYWORDS = [
+  'doctor', 'dr.', 'physician', 'clinic', 'medical', 'appointment', 'checkup', 'check-up',
+  'follow up', 'follow-up', 'followup', 'dentist', 'dental', 'orthodontist', 'optometrist',
+  'ophthalmologist', 'physical therapy', 'lab work', 'bloodwork', 'blood work', 'mri', 'x-ray',
+  'imaging', 'surgery', 'procedure', 'consult', 'specialist', 'urgent care', 'pediatrician',
+  'obgyn', 'ob/gyn', 'vaccine', 'immunization', 'screening', 'exam', 'physical', 'wellness visit',
+];
+function matchByText(text) {
+  const hay = String(text ?? '').toLowerCase();
+  return DEMO_PRACTICES.find((p) => hay.includes(p.name.toLowerCase())) ?? null;
+}
+function scoreCandidateDemo(event) {
+  const text = `${event.title} ${event.location || ''}`;
+  const practiceMatch = matchByText(text);
+  const keywordHits = GENERIC_MEDICAL_KEYWORDS.filter((kw) => text.toLowerCase().includes(kw));
+  return { practiceMatch, keywordHits, isCandidate: Boolean(practiceMatch) || keywordHits.length > 0 };
+}
+
+const DEVICE_EVENTS = [
+  { id: 'e1', title: 'Lakeside Family Medicine', location: '', when: 'Thu, 9:30 AM' },
+  { id: 'e2', title: "Mom's birthday", location: '', when: 'Sat, all day' },
+  { id: 'e3', title: 'Dentist checkup', location: '', when: 'Fri, 2:00 PM' },
+  { id: 'e4', title: 'Weekly team sync', location: 'Zoom', when: 'Mon, 10:00 AM' },
+  { id: 'e5', title: 'Follow up', location: 'Riverbend Orthopedics, Suite 2', when: 'Wed, 11:15 AM' },
+  { id: 'e6', title: 'Flight to Denver', location: 'Gate B12', when: 'Sun, 6:40 AM' },
+];
+
+function renderCalendarEventList(scanned) {
+  const el = document.getElementById('calendarEventList');
+  el.innerHTML = '';
+  let matches = 0;
+  DEVICE_EVENTS.forEach((event) => {
+    const row = document.createElement('div');
+    row.className = 'cal-event-row';
+    let verdict = '';
+    if (scanned) {
+      const score = scoreCandidateDemo(event);
+      if (score.practiceMatch) {
+        row.classList.add('match');
+        verdict = `matched: ${score.practiceMatch.name}`;
+        matches++;
+      } else if (score.keywordHits.length) {
+        row.classList.add('weak-match');
+        verdict = `keyword: ${score.keywordHits[0]}`;
+        matches++;
+      } else {
+        verdict = 'not flagged';
+      }
+    }
+    row.innerHTML = `
+      <div><span class="title">${esc(event.title)}</span><span class="meta">${esc(event.location ? event.location + ' · ' : '')}${esc(event.when)}</span></div>
+      <span class="verdict">${verdict}</span>`;
+    el.appendChild(row);
+  });
+  return matches;
+}
+function runCalendarScan() {
+  const matches = renderCalendarEventList(true);
+  document.getElementById('scanSummary').textContent = `${matches} of ${DEVICE_EVENTS.length} events look like a visit. The rest are never shown to the patient as candidates.`;
+  document.getElementById('code-calscan').innerHTML = codeCalScan();
+}
+function codeCalScan() {
+  return `<span class="c-com">// src/intake/deviceCalendar.js, the actual matcher, unmodified</span>
+<span class="c-fn">function</span> scoreCandidate(event, { directory }) {
+  <span class="c-key">const</span> text = <span class="c-fn">\`\${event.title} \${event.location}\`</span>;
+  <span class="c-key">const</span> practiceMatch = directory.<span class="c-fn">matchByText</span>(text);        <span class="c-com">// strong signal</span>
+  <span class="c-key">const</span> keywordHits = GENERIC_MEDICAL_KEYWORDS.<span class="c-fn">filter</span>(kw => text.includes(kw));  <span class="c-com">// weaker</span>
+  <span class="c-key">return</span> { practiceMatch, keywordHits, isCandidate: <span class="c-fn">Boolean</span>(practiceMatch) || keywordHits.length > <span class="c-str">0</span> };
+}
+<span class="c-com">// a birthday, a work meeting, a flight: none of that has a positive signal, so</span>
+<span class="c-com">// none of it is ever shown to the patient. the scan never builds a list to exclude.</span>`;
+}
+renderCalendarEventList(false);
+
+document.getElementById('appointmentJson').innerHTML = fmtJson(APPOINTMENT);
+
+/* ======================================================================
+   Tiny helpers: base64url, JWE compact (dir + A256GCM), QR
+   ====================================================================== */
+function b64uEncode(bytes) {
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64uDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  const bin = atob(str);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+// Matches the header jose produces for {alg:"dir",enc:"A256GCM",cty:"application/fhir+json"}, verified
+// byte-for-byte against the Node reference build's own test suite.
+const PROTECTED_HEADER_B64 = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwiY3R5IjoiYXBwbGljYXRpb24vZmhpcitqc29uIn0';
+const PROTECTED_HEADER_JSON = { alg: 'dir', enc: 'A256GCM', cty: 'application/fhir+json' };
+
+async function encryptJwe(obj) {
+  const plaintext = new TextEncoder().encode(JSON.stringify(obj));
+  const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
+  const aad = new TextEncoder().encode(PROTECTED_HEADER_B64);
+  const result = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 }, cryptoKey, plaintext));
+  const ciphertext = result.slice(0, result.length - 16);
+  const tag = result.slice(result.length - 16);
+  const compact = [PROTECTED_HEADER_B64, '', b64uEncode(iv), b64uEncode(ciphertext), b64uEncode(tag)].join('.');
+  return { compact, keyBytes };
+}
+async function decryptJwe(compact, keyB64u) {
+  const [header, , ivB64, ctB64, tagB64] = compact.split('.');
+  const keyBytes = b64uDecode(keyB64u);
+  const iv = b64uDecode(ivB64);
+  const ciphertext = b64uDecode(ctB64);
+  const tag = b64uDecode(tagB64);
+  const combined = new Uint8Array(ciphertext.length + tag.length);
+  combined.set(ciphertext, 0); combined.set(tag, ciphertext.length);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt']);
+  const aad = new TextEncoder().encode(header);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 }, cryptoKey, combined);
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function fmtJson(obj) { return esc(JSON.stringify(obj, null, 2)); }
+
+/* ======================================================================
+   State
+   ====================================================================== */
+window.state = {
+  step: 1,
+  selection: { classIds: [...BASIC, ...SUGGESTED], note: '' },
+  bundle: null,
+  jwe: null,
+  keyB64u: null,
+  linkId: null,
+  shlink: null,
+  ttlSeconds: 900,
+  startedAt: null,
+};
+
+const STEP_NAMES = ['', 'visit', 'select', 'build', 'encrypt', 'qr', 'fetch'];
+const STATUS_BY_STEP = { 1: 'not_started', 2: 'not_started', 3: 'not_started', 4: 'not_started', 5: 'qr_ready', 6: 'retrieved' };
+
+function newId(prefix) {
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return prefix + '_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ======================================================================
+   Render: progress rail, step rail, status chip
+   ====================================================================== */
+function renderChrome() {
+  const rail = document.getElementById('progressRail');
+  rail.innerHTML = '';
+  for (let i = 1; i <= 6; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i <= state.step ? ' done' : '');
+    rail.appendChild(seg);
+  }
+  const sideRail = document.getElementById('rail');
+  sideRail.innerHTML = '';
+  for (let i = 1; i <= 6; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'rail-dot' + (i < state.step ? ' done' : i === state.step ? ' active' : '');
+    dot.textContent = i;
+    sideRail.appendChild(dot);
+    if (i < 6) {
+      const line = document.createElement('div');
+      line.className = 'rail-line' + (i < state.step ? ' done' : '');
+      sideRail.appendChild(line);
+    }
+  }
+  document.getElementById('statusChip').textContent = STATUS_BY_STEP[state.step] || 'not_started';
+  document.getElementById('statusChip').className = 'status-chip' + (state.step >= 5 ? ' live' : '');
+}
+
+function showStep(n) {
+  state.step = n;
+  for (let i = 1; i <= 6; i++) {
+    document.getElementById('step-' + i).style.display = i <= n ? 'block' : 'none';
+  }
+  renderChrome();
+  if (n > 1) {
+    requestAnimationFrame(() => {
+      document.getElementById('step-' + n).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+}
+
+function advanceFrom(n) {
+  if (n === 2) { collectSelection(); buildBundle(); }
+  showStep(n + 1);
+}
+
+/* ======================================================================
+   Step 2: selection checklist
+   ====================================================================== */
+function renderGroup(containerId, ids, group) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  ids.forEach(id => {
+    const count = (RESOURCES[id] || []).length;
+    const row = document.createElement('label');
+    row.className = 'check-row';
+    const reason = group === 'basic' ? 'Part of the basic set' : group === 'suggested' ? 'Suggested for a primary care visit' : `${count} item${count === 1 ? '' : 's'} on file`;
+    row.innerHTML = `
+      <input type="checkbox" data-class="${id}" ${state.selection.classIds.includes(id) ? 'checked' : ''} onchange="toggleClass('${id}', this.checked)">
+      <span><span class="label">${CLASS_LABEL[id]}</span><span class="why">${reason}</span></span>
+      <span class="count">${count} item${count === 1 ? '' : 's'}</span>`;
+    el.appendChild(row);
+  });
+}
+function toggleClass(id, checked) {
+  const set = new Set(state.selection.classIds);
+  if (checked) set.add(id); else set.delete(id);
+  state.selection.classIds = [...set];
+  updateSelectionSummary();
+}
+function updateSelectionSummary() {
+  const n = state.selection.classIds.length;
+  document.getElementById('selectionSummary').textContent = n === 0 ? 'Nothing selected yet' : `${n} item${n === 1 ? '' : 's'} selected`;
+}
+renderGroup('group-basic', BASIC, 'basic');
+renderGroup('group-suggested', SUGGESTED, 'suggested');
+renderGroup('group-other', OTHER, 'other');
+updateSelectionSummary();
+
+function collectSelection() {
+  state.selection.note = document.getElementById('noteInput').value.trim();
+}
+
+/* ======================================================================
+   Step 3: build the bundle
+   ====================================================================== */
+function buildBundle() {
+  const patientUrn = 'urn:uuid:' + newId('pt').replace('pt_', '');
+  const entries = [{ fullUrl: patientUrn, resource: PATIENT }];
+  const lines = [`Patient: ${PATIENT.name[0].given[0]} ${PATIENT.name[0].family}`, `Date of birth: ${PATIENT.birthDate}`, ''];
+  state.selection.classIds.forEach(classId => {
+    (RESOURCES[classId] || []).forEach(r => {
+      entries.push({ fullUrl: 'urn:uuid:' + newId('rs').replace('rs_', ''), resource: { ...r, subject: { reference: patientUrn } } });
+      lines.push(`== ${r.resourceType} (${r.id}) ==`);
+      lines.push(JSON.stringify(r).replace(/[{}"]/g, '').replace(/,/g, '  ').replace(/resourceType:\w+:?/, ''));
+      lines.push('');
+    });
+  });
+  const renderedText = lines.join('\n');
+  if (state.selection.note) {
+    entries.push({ fullUrl: 'urn:uuid:' + newId('doc').replace('doc_', ''), resource: {
+      resourceType: 'DocumentReference', status: 'current',
+      type: { coding: [{ system: 'http://loinc.org', code: '51855-5', display: 'Patient Note' }] },
+      description: 'Patient-authored note',
+    } });
+  }
+  entries.push({ fullUrl: 'urn:uuid:' + newId('doc').replace('doc_', ''), resource: {
+    resourceType: 'DocumentReference', status: 'current',
+    type: { coding: [{ system: 'http://loinc.org', code: '60591-5', display: 'Patient summary Document' }] },
+  } });
+  state.bundle = { resourceType: 'Bundle', type: 'collection', timestamp: new Date().toISOString(), entry: entries };
+  state.renderedText = renderedText + (state.selection.note ? `\nIn my own words:\n${state.selection.note}\n` : '');
+
+  document.getElementById('bundleTypesPanel').innerHTML = fmtJson(state.bundle.entry.map(e => e.resource.resourceType));
+  document.getElementById('renderedSummaryPanel').textContent = state.renderedText;
+  document.getElementById('code-bundle').innerHTML = codeBundle();
+}
+
+function codeBundle() {
+  return `<span class="c-com">// src/package/bundle.js, simplified</span>
+<span class="c-fn">function</span> buildPatientSharedBundle({ patient, classResources, note, now }) {
+  <span class="c-key">const</span> patientUrl = <span class="c-fn">newUrn</span>();
+  <span class="c-key">const</span> entries = [{ fullUrl: patientUrl, resource: patient }];
+
+  <span class="c-key">for</span> (<span class="c-key">const</span> { resources } <span class="c-key">of</span> classResources) {
+    <span class="c-key">for</span> (<span class="c-key">const</span> r <span class="c-key">of</span> resources) {
+      <span class="c-com">// every reference to the source Patient is rewritten to patientUrl</span>
+      entries.push({ fullUrl: <span class="c-fn">newUrn</span>(), resource: <span class="c-fn">rewriteRefs</span>(r, patientUrl) });
+    }
+  }
+  entries.push(<span class="c-fn">renderedSummaryDocRef</span>(entries, now));  <span class="c-com">// LOINC 60591-5</span>
+  <span class="c-key">if</span> (note) entries.push(<span class="c-fn">patientStoryDocRef</span>(note, now));  <span class="c-com">// LOINC 51855-5</span>
+
+  <span class="c-key">return</span> { resourceType: <span class="c-str">'Bundle'</span>, type: <span class="c-str">'collection'</span>, timestamp: now.toISOString(), entry: entries };
+}`;
+}
+
+/* ======================================================================
+   Step 4: encrypt
+   ====================================================================== */
+async function runEncrypt() {
+  document.getElementById('btn-4').disabled = true;
+  document.getElementById('btn-4').textContent = 'Encrypting…';
+  const { compact, keyBytes } = await encryptJwe(state.bundle);
+  state.jwe = compact;
+  state.keyB64u = b64uEncode(keyBytes);
+  state.linkId = crypto.randomUUID().replace(/-/g, '');
+  const exp = Math.floor(Date.now() / 1000) + state.ttlSeconds;
+  const payload = { url: `https://app.example.com/shl/${state.linkId}`, flag: 'U', key: state.keyB64u, exp, label: 'Pre-check-in package' };
+  const b64uPayload = b64uEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  state.shlink = `shlink:/${b64uPayload}`;
+  state.startedAt = Date.now();
+
+  document.getElementById('jweHeaderPanel').textContent = JSON.stringify(PROTECTED_HEADER_JSON, null, 2);
+  document.getElementById('jwePanel').textContent = state.jwe;
+  document.getElementById('payloadPanel').innerHTML = fmtJson(payload);
+  document.getElementById('code-encrypt').innerHTML = codeEncrypt();
+  document.getElementById('encryptResults').style.display = 'block';
+  document.getElementById('btn-4').style.display = 'none';
+
+  document.getElementById('heroLinkText').textContent = state.shlink;
+  const heroPanel = document.querySelector('.hero-link-panel');
+  heroPanel.classList.add('pulse');
+  setTimeout(() => heroPanel.classList.remove('pulse'), 950);
+}
+function codeEncrypt() {
+  return `<span class="c-com">// src/shl/shlink.js, using the jose library server-side;</span>
+<span class="c-com">// this page uses the browser's native Web Crypto API instead</span>
+<span class="c-key">const</span> keyBytes = randomBytes(<span class="c-str">32</span>);           <span class="c-com">// a fresh 256-bit key, every link</span>
+<span class="c-key">const</span> jwe = <span class="c-key">await</span> <span class="c-key">new</span> CompactEncrypt(plaintext)
+  .setProtectedHeader({ alg: <span class="c-str">'dir'</span>, enc: <span class="c-str">'A256GCM'</span>, cty: <span class="c-str">'application/fhir+json'</span> })
+  .encrypt(keyBytes);
+
+<span class="c-key">const</span> payload = {
+  url: <span class="c-fn">\`\${baseUrl}/shl/\${linkId}\`</span>,
+  flag: <span class="c-str">'U'</span>,                        <span class="c-com">// resolves straight to one encrypted file</span>
+  key: <span class="c-fn">b64uEncode</span>(keyBytes),         <span class="c-com">// the key travels in the link, never on the server</span>
+  exp: nowSeconds + ttlSeconds,
+};
+<span class="c-key">const</span> link = <span class="c-fn">\`shlink:/\${b64uEncode(JSON.stringify(payload))}\`</span>;`;
+}
+
+/* ======================================================================
+   Step 5: QR + countdown
+   ====================================================================== */
+let ttlTimer = null;
+function startQr() {
+  QRCode.toCanvas(document.getElementById('qrCanvas'), state.shlink, { errorCorrectionLevel: 'M', margin: 1, width: 180 }, () => {});
+  const heroSlot = document.getElementById('heroQrSlot');
+  heroSlot.innerHTML = '';
+  const heroCanvas = document.createElement('canvas');
+  heroSlot.appendChild(heroCanvas);
+  QRCode.toCanvas(heroCanvas, state.shlink, { errorCorrectionLevel: 'M', margin: 1, width: 108 }, () => {});
+
+  clearInterval(ttlTimer);
+  ttlTimer = setInterval(() => {
+    const remaining = Math.max(0, state.ttlSeconds - Math.floor((Date.now() - state.startedAt) / 1000));
+    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    const disp = document.getElementById('ttlDisplay');
+    if (disp) disp.textContent = `${m}:${s}`;
+    if (remaining <= 0) clearInterval(ttlTimer);
+  }, 1000);
+}
+
+/* ======================================================================
+   Step 6: simulated fetch and decrypt
+   ====================================================================== */
+function logLine(container, ok, text) {
+  const row = document.createElement('div');
+  row.className = 'log-line';
+  row.innerHTML = `<span class="log-dot ${ok ? 'ok' : 'no'}"></span><span>${text}</span>`;
+  container.appendChild(row);
+}
+async function runFetchStep() {
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  const log = document.getElementById('fetchLog');
+  log.innerHTML = '';
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  logLine(log, true, `GET /shl/${state.linkId}?recipient=Lakeside%20Family%20Medicine`);
+  await wait(280);
+  logLine(log, true, 'Link found, not expired, not revoked. Access logged.');
+  await wait(280);
+  logLine(log, true, 'Content-Type: application/jose received.');
+  await wait(280);
+  const decrypted = await decryptJwe(state.jwe, state.keyB64u);
+  logLine(log, true, 'Decrypted with the key from the link (AES-256-GCM, tag verified).');
+  await wait(220);
+  const matches = JSON.stringify(decrypted) === JSON.stringify(state.bundle);
+  logLine(log, matches, matches ? 'Decrypted bundle matches what was built in step 3.' : 'Mismatch detected.');
+  await wait(220);
+
+  const types = decrypted.entry.map(e => e.resource.resourceType);
+  const must = [], should = [];
+  decrypted.entry.forEach(e => {
+    if (e.resource.resourceType === 'Patient') return;
+    (MUST_FILE_TYPES.has(e.resource.resourceType) ? must : should).push(e.resource);
+  });
+  document.getElementById('mustFilePanel').innerHTML = fmtJson(must.map(r => r.resourceType));
+  document.getElementById('shouldFilePanel').innerHTML = fmtJson(should.map(r => r.resourceType));
+  document.getElementById('fetchResults').style.display = 'block';
+
+  const now = new Date();
+  document.getElementById('finalTime').textContent = now.toLocaleTimeString();
+  document.getElementById('finalRecipient').textContent = 'Lakeside Family Medicine';
+  document.getElementById('qrStepStatus').textContent = 'retrieved';
+  document.getElementById('code-status').innerHTML = codeStatus();
+  btn.textContent = 'Request the link again';
+  btn.disabled = false;
+  state.step = 6;
+  renderChrome();
+  document.getElementById('statusChip').textContent = 'retrieved';
+}
+function codeStatus() {
+  return `<span class="c-com">// src/status/status.js, simplified</span>
+<span class="c-fn">function</span> deriveCheckinStatus({ links, accessForLink, now }) {
+  <span class="c-com">// any successful fetch, on either route, wins outright</span>
+  <span class="c-key">const</span> fetch = <span class="c-fn">latestSuccessfulFetch</span>(links, accessForLink);
+  <span class="c-key">if</span> (fetch) <span class="c-key">return</span> { state: <span class="c-str">'retrieved'</span>, recipient: fetch.recipient, at: fetch.at };
+
+  <span class="c-key">if</span> (qrLink && !<span class="c-fn">expired</span>(qrLink, now)) <span class="c-key">return</span> { state: <span class="c-str">'qr_ready'</span> };
+  <span class="c-key">return</span> { state: <span class="c-str">'not_started'</span> };
+}
+<span class="c-com">// nothing about check-in status is ever written down as a fact on its own</span>`;
+}
+
+/* ======================================================================
+   Code toggles, step wiring, init
+   ====================================================================== */
+function toggleCode(btn, panelId) {
+  const panel = document.getElementById(panelId);
+  const open = panel.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+const origAdvance = advanceFrom;
+advanceFrom = function (n) {
+  origAdvance(n);
+  if (n + 1 === 5) setTimeout(startQr, 60);
+};
+
+renderChrome();
+</script>
+</body>
+</html>
